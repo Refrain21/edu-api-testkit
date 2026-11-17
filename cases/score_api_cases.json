@@ -1,0 +1,238 @@
+{
+  "_comment": "用例按数组顺序执行。method_design 标注使用的测试用例设计方法；SC 开头为场景法连续业务流，依赖前序步骤写入的数据。所有写操作集中在测试学期 2025-2026-3，与种子数据的两个学期隔离。",
+  "suite": "学生成绩服务 · 接口自动化测试",
+  "cases": [
+    {
+      "id": "TC-001",
+      "title": "正常成绩录入成功并正确落库",
+      "method_design": "等价类-有效",
+      "request": {"method": "POST", "path": "/api/scores", "json": {"student_no": "S2023001", "course_code": "CS101", "term": "2025-2026-3", "status": "normal", "score": 85}},
+      "expect": {"status": 200, "json": {"ok": true, "action": "created"}},
+      "checks": [{"name": "score_of", "params": {"student_no": "S2023001", "course_code": "CS101", "term": "2025-2026-3"}, "expect": 85}]
+    },
+    {
+      "id": "TC-002",
+      "title": "成绩为下边界值 0，触发中风险预警",
+      "method_design": "边界值",
+      "request": {"method": "POST", "path": "/api/scores", "json": {"student_no": "S2023002", "course_code": "CS102", "term": "2025-2026-3", "status": "normal", "score": 0}},
+      "expect": {"status": 200, "json": {"warning": {"level": "medium"}}},
+      "checks": [
+        {"name": "score_of", "params": {"student_no": "S2023002", "course_code": "CS102", "term": "2025-2026-3"}, "expect": 0},
+        {"name": "warning_level", "params": {"student_no": "S2023002", "term": "2025-2026-3"}, "expect": "medium"},
+        {"name": "warning_count", "params": {"student_no": "S2023002", "term": "2025-2026-3"}, "expect": 1}
+      ]
+    },
+    {
+      "id": "TC-003",
+      "title": "成绩为上边界值 100，不产生预警",
+      "method_design": "边界值",
+      "request": {"method": "POST", "path": "/api/scores", "json": {"student_no": "S2023003", "course_code": "CS103", "term": "2025-2026-3", "status": "normal", "score": 100}},
+      "expect": {"status": 200, "json": {"warning": null}},
+      "checks": [
+        {"name": "score_of", "params": {"student_no": "S2023003", "course_code": "CS103", "term": "2025-2026-3"}, "expect": 100},
+        {"name": "warning_count", "params": {"student_no": "S2023003", "term": "2025-2026-3"}, "expect": 0}
+      ]
+    },
+    {
+      "id": "TC-004",
+      "title": "成绩 -1（下边界外）被拒绝",
+      "method_design": "边界值",
+      "request": {"method": "POST", "path": "/api/scores", "json": {"student_no": "S2023004", "course_code": "CS104", "term": "2025-2026-3", "status": "normal", "score": -1}},
+      "expect": {"status": 400, "error_contains": "0-100"},
+      "checks": [{"name": "score_rows", "params": {"student_no": "S2023004", "course_code": "CS104", "term": "2025-2026-3"}, "expect": 0}]
+    },
+    {
+      "id": "TC-005",
+      "title": "成绩 100.5（上边界外）被拒绝",
+      "method_design": "边界值",
+      "request": {"method": "POST", "path": "/api/scores", "json": {"student_no": "S2023004", "course_code": "CS104", "term": "2025-2026-3", "status": "normal", "score": 100.5}},
+      "expect": {"status": 400, "error_contains": "0-100"},
+      "checks": [{"name": "score_rows", "params": {"student_no": "S2023004", "course_code": "CS104", "term": "2025-2026-3"}, "expect": 0}]
+    },
+    {
+      "id": "TC-006",
+      "title": "成绩为非数字字符串被拒绝",
+      "method_design": "等价类-无效",
+      "request": {"method": "POST", "path": "/api/scores", "json": {"student_no": "S2023004", "course_code": "CS104", "term": "2025-2026-3", "status": "normal", "score": "abc"}},
+      "expect": {"status": 400, "error_contains": "数字"},
+      "checks": [{"name": "score_rows", "params": {"student_no": "S2023004", "course_code": "CS104", "term": "2025-2026-3"}, "expect": 0}]
+    },
+    {
+      "id": "TC-007",
+      "title": "非法的成绩状态值被拒绝",
+      "method_design": "等价类-无效",
+      "request": {"method": "POST", "path": "/api/scores", "json": {"student_no": "S2023004", "course_code": "CS104", "term": "2025-2026-3", "status": "unknown", "score": 80}},
+      "expect": {"status": 400, "error_contains": "status"},
+      "checks": [{"name": "score_rows", "params": {"student_no": "S2023004", "course_code": "CS104", "term": "2025-2026-3"}, "expect": 0}]
+    },
+    {
+      "id": "TC-008",
+      "title": "缺少必填字段 term 时返回字段清单",
+      "method_design": "等价类-无效",
+      "request": {"method": "POST", "path": "/api/scores", "json": {"student_no": "S2023004", "course_code": "CS104", "status": "normal", "score": 80}},
+      "expect": {"status": 400, "json": {"fields": ["term"]}}
+    },
+    {
+      "id": "TC-009",
+      "title": "不存在的学生返回 404",
+      "method_design": "等价类-无效",
+      "request": {"method": "POST", "path": "/api/scores", "json": {"student_no": "S0000", "course_code": "CS104", "term": "2025-2026-3", "status": "normal", "score": 80}},
+      "expect": {"status": 404, "error_contains": "学生不存在"}
+    },
+    {
+      "id": "TC-010",
+      "title": "不存在的课程返回 404",
+      "method_design": "等价类-无效",
+      "request": {"method": "POST", "path": "/api/scores", "json": {"student_no": "S2023004", "course_code": "CS999", "term": "2025-2026-3", "status": "normal", "score": 80}},
+      "expect": {"status": 404, "error_contains": "课程不存在"}
+    },
+    {
+      "id": "TC-011",
+      "title": "缺考状态携带成绩被拒绝",
+      "method_design": "等价类-无效",
+      "request": {"method": "POST", "path": "/api/scores", "json": {"student_no": "S2023005", "course_code": "CS105", "term": "2025-2026-3", "status": "absent", "score": 80}},
+      "expect": {"status": 400, "error_contains": "为空"},
+      "checks": [{"name": "score_rows", "params": {"student_no": "S2023005", "course_code": "CS105", "term": "2025-2026-3"}, "expect": 0}]
+    },
+    {
+      "id": "TC-012",
+      "title": "缺考成绩以 NULL 落库且不参与预警",
+      "method_design": "等价类-有效",
+      "request": {"method": "POST", "path": "/api/scores", "json": {"student_no": "S2023005", "course_code": "CS105", "term": "2025-2026-3", "status": "absent", "score": null}},
+      "expect": {"status": 200, "json": {"ok": true}},
+      "checks": [
+        {"name": "score_of", "params": {"student_no": "S2023005", "course_code": "CS105", "term": "2025-2026-3"}, "expect": null},
+        {"name": "score_status", "params": {"student_no": "S2023005", "course_code": "CS105", "term": "2025-2026-3"}, "expect": "absent"},
+        {"name": "warning_count", "params": {"student_no": "S2023005", "term": "2025-2026-3"}, "expect": 0}
+      ]
+    },
+    {
+      "id": "TC-013",
+      "title": "免修成绩录入成功",
+      "method_design": "等价类-有效",
+      "request": {"method": "POST", "path": "/api/scores", "json": {"student_no": "S2023005", "course_code": "CS106", "term": "2025-2026-3", "status": "exempt", "score": null}},
+      "expect": {"status": 200, "json": {"action": "created"}},
+      "checks": [{"name": "score_status", "params": {"student_no": "S2023005", "course_code": "CS106", "term": "2025-2026-3"}, "expect": "exempt"}]
+    },
+    {
+      "id": "TC-014",
+      "title": "同一学生课程学期重复提交时更新而非新增",
+      "method_design": "场景法",
+      "request": {"method": "POST", "path": "/api/scores", "json": {"student_no": "S2023001", "course_code": "CS101", "term": "2025-2026-3", "status": "normal", "score": 91}},
+      "expect": {"status": 200, "json": {"action": "updated"}},
+      "checks": [
+        {"name": "score_of", "params": {"student_no": "S2023001", "course_code": "CS101", "term": "2025-2026-3"}, "expect": 91},
+        {"name": "score_rows", "params": {"student_no": "S2023001", "course_code": "CS101", "term": "2025-2026-3"}, "expect": 1}
+      ]
+    },
+    {
+      "id": "TC-015",
+      "title": "按学生与学期查询成绩列表",
+      "method_design": "等价类-有效",
+      "request": {"method": "GET", "path": "/api/scores", "params": {"student_no": "S2023001", "term": "2025-2026-3"}},
+      "expect": {"status": 200, "json": {"count": 1, "student_no": "S2023001"}}
+    },
+    {
+      "id": "TC-016",
+      "title": "查询成绩缺少 student_no 参数返回 400",
+      "method_design": "等价类-无效",
+      "request": {"method": "GET", "path": "/api/scores"},
+      "expect": {"status": 400, "error_contains": "student_no"}
+    },
+    {
+      "id": "SC-017",
+      "title": "场景第1步：首门 50 分，仅触发中风险",
+      "method_design": "场景法",
+      "request": {"method": "POST", "path": "/api/scores", "json": {"student_no": "S9999", "course_code": "CS101", "term": "2025-2026-3", "status": "normal", "score": 50}},
+      "expect": {"status": 200, "json": {"warning": {"level": "medium"}}},
+      "checks": [
+        {"name": "warning_level", "params": {"student_no": "S9999", "term": "2025-2026-3"}, "expect": "medium"},
+        {"name": "warning_count", "params": {"student_no": "S9999", "term": "2025-2026-3"}, "expect": 1}
+      ]
+    },
+    {
+      "id": "SC-018",
+      "title": "场景第2步：出现第2门不及格，升级为高风险",
+      "method_design": "场景法",
+      "request": {"method": "POST", "path": "/api/scores", "json": {"student_no": "S9999", "course_code": "CS102", "term": "2025-2026-3", "status": "normal", "score": 55}},
+      "expect": {"status": 200, "json": {"warning": {"level": "high", "reason": "不及格 2 门"}}},
+      "checks": [{"name": "warning_level", "params": {"student_no": "S9999", "term": "2025-2026-3"}, "expect": "high"}]
+    },
+    {
+      "id": "SC-019",
+      "title": "场景第3步：第3门不及格，预警不重复生成",
+      "method_design": "场景法",
+      "request": {"method": "POST", "path": "/api/scores", "json": {"student_no": "S9999", "course_code": "CS103", "term": "2025-2026-3", "status": "normal", "score": 45}},
+      "expect": {"status": 200, "json": {"warning": {"level": "high"}}},
+      "checks": [{"name": "warning_count", "params": {"student_no": "S9999", "term": "2025-2026-3"}, "expect": 1}]
+    },
+    {
+      "id": "SC-020",
+      "title": "场景第4步：学生画像与预警结果一致",
+      "method_design": "场景法",
+      "request": {"method": "GET", "path": "/api/students/S9999/profile"},
+      "expect": {"status": 200, "json": {"total": 3, "avg": 50.0, "failed": 3, "warning": {"level": "high"}}},
+      "checks": [{"name": "profile_overview", "params": {"student_no": "S9999"}, "expect": {"total": 3, "avg": 50.0, "failed": 3}}]
+    },
+    {
+      "id": "TC-021",
+      "title": "平均分恰好 65 分不触发中风险（规则边界）",
+      "method_design": "边界值",
+      "request": {"method": "POST", "path": "/api/scores", "json": {"student_no": "S9998", "course_code": "CS101", "term": "2025-2026-3", "status": "normal", "score": 65}},
+      "expect": {"status": 200, "json": {"warning": null}},
+      "checks": [{"name": "warning_count", "params": {"student_no": "S9998", "term": "2025-2026-3"}, "expect": 0}]
+    },
+    {
+      "id": "TC-022",
+      "title": "平均分 64.5 时触发中风险预警",
+      "method_design": "边界值",
+      "request": {"method": "POST", "path": "/api/scores", "json": {"student_no": "S9998", "course_code": "CS102", "term": "2025-2026-3", "status": "normal", "score": 64}},
+      "expect": {"status": 200, "json": {"warning": {"level": "medium", "reason": "学期平均分 64.50"}}},
+      "checks": [{"name": "warning_level", "params": {"student_no": "S9998", "term": "2025-2026-3"}, "expect": "medium"}]
+    },
+    {
+      "id": "TC-023",
+      "title": "课程统计接口返回正确的聚合结果",
+      "method_design": "等价类-有效",
+      "request": {"method": "GET", "path": "/api/stats/course/CS101", "params": {"term": "2025-2026-3"}},
+      "expect": {"status": 200, "json": {"total": 3, "avg": 68.67, "max": 91, "min": 50, "passed": 2, "pass_rate": 0.6667}},
+      "checks": [{"name": "course_stats", "params": {"course_code": "CS101", "term": "2025-2026-3"}, "expect": {"total": 3, "avg": 68.67, "max": 91, "min": 50, "pass_rate": 0.6667}}]
+    },
+    {
+      "id": "TC-024",
+      "title": "课程统计缺少 term 参数返回 400",
+      "method_design": "等价类-无效",
+      "request": {"method": "GET", "path": "/api/stats/course/CS101"},
+      "expect": {"status": 400, "error_contains": "term"}
+    },
+    {
+      "id": "TC-025",
+      "title": "不存在的学生查询画像返回 404",
+      "method_design": "等价类-无效",
+      "request": {"method": "GET", "path": "/api/students/S0000/profile"},
+      "expect": {"status": 404, "error_contains": "学生不存在"}
+    },
+    {
+      "id": "TC-026",
+      "title": "测试学期的预警列表数量与明细匹配",
+      "method_design": "场景法",
+      "request": {"method": "GET", "path": "/api/warnings", "params": {"term": "2025-2026-3"}},
+      "expect": {"status": 200, "json": {"count": 3}},
+      "checks": [{"name": "warning_rule_mismatch", "params": {}, "expect": 0}]
+    },
+    {
+      "id": "TC-027",
+      "title": "使用错误的请求方法返回 405",
+      "method_design": "等价类-无效",
+      "request": {"method": "PUT", "path": "/api/scores", "json": {}},
+      "expect": {"status": 405}
+    },
+    {
+      "id": "TC-028",
+      "title": "空请求体返回 400",
+      "method_design": "等价类-无效",
+      "request": {"method": "POST", "path": "/api/scores"},
+      "expect": {"status": 400, "error_contains": "JSON"}
+    }
+  ]
+}

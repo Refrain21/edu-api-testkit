@@ -1,0 +1,54 @@
+{
+  "_comment": "全库不变量校验：在接口用例执行完成后运行，期望值恒为 0。用于发现接口操作之后的数据一致性问题。",
+  "suite": "SQL 数据一致性校验",
+  "checks": [
+    {
+      "id": "SQL-001",
+      "title": "成绩表无孤儿记录（学生、课程均存在）",
+      "check": "orphan_scores",
+      "params": {},
+      "expect": 0,
+      "sql_tech": "LEFT JOIN 多表联查 + IS NULL 判定"
+    },
+    {
+      "id": "SQL-002",
+      "title": "库中不存在超出 0-100 的成绩",
+      "check": "score_out_of_range",
+      "params": {},
+      "expect": 0,
+      "sql_tech": "WHERE 条件 + BETWEEN 边界校验"
+    },
+    {
+      "id": "SQL-003",
+      "title": "同一学生同一课程同一学期无重复成绩",
+      "check": "duplicate_scores",
+      "params": {},
+      "expect": 0,
+      "sql_tech": "GROUP BY + HAVING COUNT(*) > 1"
+    },
+    {
+      "id": "SQL-004",
+      "title": "预警表无孤儿记录",
+      "check": "warning_orphan",
+      "params": {},
+      "expect": 0,
+      "sql_tech": "LEFT JOIN 多表联查"
+    },
+    {
+      "id": "SQL-005",
+      "title": "预警等级与规则重算结果完全一致（含该清理的记录）",
+      "check": "warning_rule_mismatch",
+      "params": {},
+      "expect": 0,
+      "sql_tech": "CTE + CASE WHEN + 聚合 + 双向 LEFT JOIN"
+    },
+    {
+      "id": "SQL-006",
+      "title": "数据库外键完整性检查通过",
+      "check": "fk_violations",
+      "params": {},
+      "expect": 0,
+      "sql_tech": "PRAGMA foreign_key_check"
+    }
+  ]
+}
