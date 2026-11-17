@@ -1,0 +1,4 @@
+# 运行依赖（Python 3.9+）
+# 其余功能全部使用标准库：sqlite3 / logging / unittest / json
+Flask>=3.0,<4.0
+requests>=2.31,<3.0
